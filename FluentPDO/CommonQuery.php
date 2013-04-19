@@ -204,7 +204,7 @@ abstract class CommonQuery extends BaseQuery {
 	 * @return string  rewrited $statement (e.g. tab1.tab2:col => tab2.col)
 	 */
 	private function createUndefinedJoins($statement) {
-		if (!$this->isSmartJoinEnabled) {
+		if (!$this->isSmartJoinEnabled || $statement instanceof SelectQuery) {
 			return $statement;
 		}
 

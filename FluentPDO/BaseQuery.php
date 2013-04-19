@@ -182,7 +182,16 @@ abstract class BaseQuery implements IteratorAggregate {
 		foreach ($this->clauses as $clause => $separator) {
 			if ($this->clauseNotEmpty($clause)) {
 				if (is_string($separator)) {
-					$query .= " $clause " . implode($separator, $this->statements[$clause]);
+					$t = $this;
+					$query .= " $clause " . implode($separator, array_map(function ($x) use ($t, $clause) {
+							if ($x instanceof SelectQuery) {
+								$x->disableSmartJoin(); // TODO: pass parent table aliases.
+								$t->parameters[$clause] = array_merge($t->parameters[$clause], $x->getParameters());
+								return '('.$x->getQuery().')';
+							} else {
+								return $x;
+							}
+						}, $this->statements[$clause]));
 				} elseif ($separator === null) {
 					$query .= " $clause " . $this->statements[$clause];
 				} elseif (is_callable($separator)) {
@@ -238,6 +247,11 @@ abstract class BaseQuery implements IteratorAggregate {
 		}
 		if (is_int($value) || $value instanceof FluentLiteral) { // number or SQL code - for example "NOW()"
 			return (string) $value;
+		}
+		if ($value instanceof SelectQuery) {
+			$value->disableSmartJoin(); // TODO: pass parent table aliases.
+			$this->parameters = array_merge($this->parameters, $value->getParameters());
+			return '('.($value->getQuery()).')';
 		}
 		return $this->fpdo->getPdo()->quote($value);
 	}
